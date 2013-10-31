@@ -16,11 +16,15 @@
 
 package com.google.android.apps.markers;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -71,6 +75,7 @@ import android.widget.Toast;
 import org.dsandler.apps.markers.R;
 
 import com.google.android.apps.markers.ToolButton.SwatchButton;
+
 
 public class MarkersActivity extends Activity
 {
@@ -414,11 +419,26 @@ public class MarkersActivity extends Activity
     public void onPause() {
         super.onPause();
         try {
-            File wipOuputFile = getOuputFile(WIP_FILENAME, true);
-            saveDrawing(wipOuputFile, true);
+            if (mOutputSavePath == null) {
+                File wipOuputFile = getOuputFile(WIP_FILENAME, true);
+                saveDrawing(wipOuputFile, false);
+            }
         } catch (Exception e) {
             Log.e(TAG, "save: error: " + e);
         }
+    }
+    
+    @Override
+    public void finish() {
+        try {
+            if (mOutputSavePath != null) {
+                File ouputFile = getOuputFile(null, true);
+                saveDrawing(ouputFile);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "save: error: " + e);
+        }
+        super.finish();
     }
 
     @Override
@@ -644,6 +664,11 @@ public class MarkersActivity extends Activity
             localBits = mSlate.copyBitmap(/*withBackground=*/!temporary);
         }else{
             localBits = mSlate.copyBitmap(true);
+            try {
+                saveGeopaparazziExtras(file);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         if (localBits == null) {
             if (DEBUG) Log.e(TAG, "save: null bitmap");
@@ -675,6 +700,7 @@ public class MarkersActivity extends Activity
                     os.close();
                     
                     fn = _file.toString();
+                    
                 } catch (IOException e) {
                     Log.e(TAG, "save: error: " + e);
                 }
@@ -683,23 +709,86 @@ public class MarkersActivity extends Activity
             
             @Override
             protected void onPostExecute(String fn) {
-                if (fn != null) {
-                    synchronized(mDrawingsToScan) {
-                        mDrawingsToScan.add(fn);
-                        if (_share) {
-                            mPendingShareFile = fn;
-                        }
-                        if (!mMediaScannerConnection.isConnected()) {
-                            mMediaScannerConnection.connect(); // will scan the files and share them
-                        }
-                    }
-                }
+//                if (fn != null) {
+//                    synchronized(mDrawingsToScan) {
+//                        mDrawingsToScan.add(fn);
+//                        if (_share) {
+//                            mPendingShareFile = fn;
+//                        }
+//                        if (!mMediaScannerConnection.isConnected()) {
+//                            mMediaScannerConnection.connect(); // will scan the files and share them
+//                        }
+//                    }
+//                }
 
                 if (_clear) mSlate.clear();
             }
         }.execute();
         
     }
+    
+    private void saveGeopaparazziExtras( File imageFile ) throws IOException {
+        String keyLong = "LONGITUDE";
+        String keyLat = "LATITUDE";
+        String keyElev = "ELEVATION";
+        String keyPath = "PREFS_KEY_PATH";
+        
+        Bundle extras = getIntent().getExtras();
+        double lon;
+        double lat;
+        double elevation;
+        if (extras != null) {
+            lon = extras.getDouble(keyLong);
+            lat = extras.getDouble(keyLat);
+            elevation = extras.getDouble(keyElev);
+        } else {
+            setResult(Activity.RESULT_CANCELED);
+            return;
+        }
+        
+        if (lon == 0 && lat == 0) {
+            setResult(Activity.RESULT_CANCELED);
+            return;
+        }
+
+        Intent intent = getIntent();
+        intent.putExtra(keyPath, imageFile.getAbsolutePath());
+        intent.putExtra(keyLat, lat);
+        intent.putExtra(keyLong, lon);
+        intent.putExtra(keyElev, elevation);
+        setResult(Activity.RESULT_OK, intent);
+
+        File imageFolder = imageFile.getParentFile();
+        String name = imageFile.getName();
+        int lastDot = name.lastIndexOf("."); //$NON-NLS-1$
+        String nameNoExt = name.substring(0, lastDot);
+        String propFileName = nameNoExt + ".properties";
+        File imagePropertiesFile = new File(imageFolder, propFileName);
+        if (!imagePropertiesFile.exists()) {
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss"); //$NON-NLS-1$
+            Date currentDate = new Date();
+            String currentDatestring = formatter.format(currentDate);
+
+            // create props file
+            BufferedWriter bW = null;
+            try {
+                bW = new BufferedWriter(new FileWriter(imagePropertiesFile));
+                bW.write("latitude=");
+                bW.write(String.valueOf(lat));
+                bW.write("\nlongitude=");
+                bW.write(String.valueOf(lon));
+                bW.write("\naltim=");
+                bW.write(String.valueOf(elevation));
+                bW.write("\nutctimestamp=");
+                bW.write(currentDatestring);
+            } finally {
+                if (bW != null)
+                    bW.close();
+            }
+        }
+        setResult(Activity.RESULT_OK, intent);
+    }
+    
     
     /**
      * Prepares the output {@link File} to write to.
@@ -837,7 +926,7 @@ public class MarkersActivity extends Activity
         hideOverflow();
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
         sendIntent.setType("text/plain");
-        sendIntent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.app_name));
+        sendIntent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.app_name2));
         sendIntent.putExtra(Intent.EXTRA_TEXT,
                 "http://play.google.com/store/apps/details?id=" + getPackageName());
         startActivity(Intent.createChooser(sendIntent, "Share the Markers app with:"));
@@ -881,7 +970,7 @@ public class MarkersActivity extends Activity
             WindowManager.LayoutParams winParams = dialogWin.getAttributes();
             winParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
             winParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            winParams.y = getResources().getDimensionPixelOffset(R.dimen.action_bar_height);
+            winParams.y = getResources().getDimensionPixelOffset(R.dimen.action_bar_height2);
             dialogWin.setAttributes(winParams);
             dialogWin.setWindowAnimations(android.R.style.Animation_Translucent);
             dialogWin.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);

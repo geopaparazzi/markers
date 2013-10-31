@@ -26,14 +26,14 @@
 	<include layout="@layout/actionbar"
       	android:id="@+id/actionbar"
 	    android:layout_width="match_parent"
-	    android:layout_height="@dimen/action_bar_height"
+	    android:layout_height="@dimen/action_bar_height2"
 	    />
 	       
 	<LinearLayout
-		android:layout_width="@dimen/action_bar_logo_width"
+		android:layout_width="@dimen/action_bar_logo_width2"
 		android:layout_height="match_parent"
 		android:id="@+id/hud"
-	    android:layout_marginTop="@dimen/action_bar_height"
+	    android:layout_marginTop="@dimen/action_bar_height2"
 		android:gravity="left"
 		android:orientation="vertical"
 	    android:background="#FF000000"
@@ -57,8 +57,8 @@
     <ImageView
         android:id="@+id/logo"
         android:src="@drawable/markers"
-        android:layout_width="@dimen/action_bar_logo_width"
-        android:layout_height="@dimen/action_bar_height"
+        android:layout_width="@dimen/action_bar_logo_width2"
+        android:layout_height="@dimen/action_bar_height2"
         android:padding="2dp"
         android:onClick="clickLogo"
         android:alpha="0.5"
