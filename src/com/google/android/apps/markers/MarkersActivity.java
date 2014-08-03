@@ -758,6 +758,7 @@ public class MarkersActivity extends Activity
         intent.putExtra(keyElev, elevation);
         setResult(Activity.RESULT_OK, intent);
 
+	/*
         File imageFolder = imageFile.getParentFile();
         String name = imageFile.getName();
         int lastDot = name.lastIndexOf("."); //$NON-NLS-1$
@@ -786,7 +787,7 @@ public class MarkersActivity extends Activity
                     bW.close();
             }
         }
-        setResult(Activity.RESULT_OK, intent);
+	*/
     }
     
     
